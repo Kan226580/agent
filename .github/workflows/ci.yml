@@ -30,6 +30,12 @@ jobs:
 
     env:
       ENV: test
+      ADMIN__DB: test_db
+      ADMIN__HOST: 127.0.0.1
+      ADMIN__PORT: 5432
+      ADMIN__USERNAME: test_admin
+      ADMIN__PASSWORD: test_admin_only
+      ADMIN__DRIVER: postgresql+psycopg
 
     steps:
       - name: 1. 检出代码
