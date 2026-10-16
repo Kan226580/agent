@@ -30,7 +30,15 @@ uv run python -m pytest -q
 
 ## 本地启动
 
-- 后端开发
+- Docker
+
+```bash
+docker compose --env-file ./backend/.env -f ./backend/deploy/compose.yaml up -d
+docker compose --env-file ./backend/.env -f ./backend/deploy/compose.yaml ps
+docker compose --env-file ./backend/.env -f ./backend/deploy/compose.yaml logs postgres
+```
+
+- 后端
 
 ```bash
 Set-Location backend

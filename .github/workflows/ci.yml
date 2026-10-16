@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - dev
+  pull_request:
+    branches:
+      - master
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflows }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: 后端质量门禁
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      ENV: test
+      ADMIN__DB: test_db
+      ADMIN__HOST: 127.0.0.1
+      ADMIN__PORT: 5432
+      ADMIN__USERNAME: test_admin
+      ADMIN__PASSWORD: test_admin_only
+      ADMIN__DRIVER: postgresql+psycopg
+
+    steps:
+      - name: 1. 检出代码
+        uses: actions/checkout@v7
+
+      - name: 2. 安装 uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            backend/pyproject.toml
+            backend/uv.lock
+
+      - name: 3. 安装 Python
+        run: uv python install
+
+      - name: 4. 安装依赖
+        run: uv sync --locked
+
+      - name: 5. 缓存 mypy
+        uses: actions/cache@v4
+        with:
+          path: backend/.mypy_cache
+          key: ${{ runner.os }}-mypy-${{ hashFiles('backend/.python-version', 'backend/pyproject.toml', 'backend/uv.lock') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-mypy-${{ hashFiles('backend/.python-version', 'backend/pyproject.toml', 'backend/uv.lock') }}-
+
+      - name: 6. 缓存 pytest
+        uses: actions/cache@v4
+        with:
+          path: backend/.pytest_cache
+          key: ${{ runner.os }}-pytest-${{ hashFiles('backend/.python-version', 'backend/pyproject.toml', 'backend/uv.lock') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-pytest-${{ hashFiles('backend/.python-version', 'backend/pyproject.toml', 'backend/uv.lock') }}-
+
+      - name: 7. Ruff 静态检查
+        run: uv run --locked ruff check --output-format=github app tests
+
+      - name: 8. Ruff 格式检查
+        run: uv run --locked ruff format --check app tests
+
+      - name: 9. mypy 类型检查
+        run: uv run --locked mypy app
+
+      - name: 10. 测试
+        run: uv run --locked python -m pytest -q
